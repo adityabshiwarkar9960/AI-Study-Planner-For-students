@@ -1,0 +1,229 @@
+{% extends "base.html" %}
+{% block title %}Quiz Generator — AI Study Planner{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4 py-4 quiz-page">
+
+  <div class="quiz-hero card border-0 shadow-sm mb-4">
+    <div class="card-body p-4 p-lg-5">
+      <div class="row align-items-center g-4">
+        <div class="col-lg-8">
+          <span class="badge bg-primary bg-opacity-10 text-primary mb-3">PDF to MCQ quiz</span>
+          <h3 class="fw-bold mb-2">Upload a subject PDF and turn it into a quick quiz.</h3>
+          <p class="text-muted mb-0">
+            The app extracts text from your PDF, builds multiple-choice questions, and lets you answer them on the same page.
+          </p>
+        </div>
+        <div class="col-lg-4">
+          <div class="rounded-4 bg-body-tertiary p-3">
+            <div class="d-flex align-items-center justify-content-between mb-2">
+              <span class="fw-semibold">How it works</span>
+              <i class="fas fa-wand-magic-sparkles text-primary"></i>
+            </div>
+            <ol class="small text-muted mb-0 ps-3">
+              <li>Upload a PDF for one subject.</li>
+              <li>Generate MCQs from the extracted text.</li>
+              <li>Answer the questions and check your score.</li>
+            </ol>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card border-0 shadow-sm mb-4">
+    <div class="card-body p-4">
+      <form method="POST" enctype="multipart/form-data" class="row g-3 align-items-end">
+        <input type="hidden" name="action" value="generate" />
+        <div class="col-lg-8">
+          <label class="form-label fw-semibold">Subject PDF</label>
+          <input type="file" class="form-control form-control-lg" name="quiz_pdf" accept="application/pdf,.pdf" required />
+          <div class="form-text">Use a PDF with selectable text for the best quiz generation results.</div>
+        </div>
+        <div class="col-lg-4 d-grid">
+          <button type="submit" class="btn btn-primary btn-lg">
+            <i class="fas fa-file-circle-question me-2"></i>Generate Quiz
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  {% if quiz_questions %}
+    <div class="card border-0 shadow-sm mb-4">
+      <div class="card-body p-4 d-flex flex-wrap gap-2 align-items-center justify-content-between">
+        <div>
+          <h5 class="fw-bold mb-1">Quiz tools</h5>
+          <p class="text-muted mb-0">Print the page or export the generated quiz as a PDF file.</p>
+        </div>
+        <div class="d-flex flex-wrap gap-2">
+          <button type="button" class="btn btn-outline-secondary" onclick="window.print()">
+            <i class="fas fa-print me-2"></i>Print Quiz
+          </button>
+          <form method="POST" class="d-inline">
+            <input type="hidden" name="action" value="export" />
+            <input type="hidden" name="source_name" value="{{ source_name or '' }}" />
+            <input type="hidden" name="quiz_data" value='{{ quiz_questions|tojson }}' />
+            <button type="submit" class="btn btn-primary">
+              <i class="fas fa-file-pdf me-2"></i>Export PDF
+            </button>
+          </form>
+        </div>
+      </div>
+    </div>
+  {% endif %}
+
+  {% if source_name %}
+    <div class="alert alert-info shadow-sm">
+      <i class="fas fa-file-pdf me-2"></i>Using {{ source_name }}
+    </div>
+  {% endif %}
+
+  {% if quiz_results and score is not none %}
+    <div class="card border-0 shadow-sm mb-4">
+      <div class="card-body p-4">
+        <div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-3">
+          <div>
+            <h4 class="fw-bold mb-1">Quiz score</h4>
+            <p class="text-muted mb-0">You answered {{ quiz_results|length }} question{{ 's' if quiz_results|length != 1 else '' }}.</p>
+          </div>
+          <div class="d-flex align-items-center gap-2">
+            <div class="quiz-score-pill">
+              {{ score }}%
+            </div>
+            {% if attempt_id %}
+              <a class="btn btn-outline-primary" href="{{ url_for('quiz_export_attempt', attempt_id=attempt_id) }}">
+                <i class="fas fa-file-pdf me-2"></i>Download Attempt PDF
+              </a>
+            {% endif %}
+          </div>
+        </div>
+
+        <div class="progress mb-4" style="height: 10px;">
+          <div class="progress-bar" role="progressbar" style="width: {{ score }}%;" aria-valuenow="{{ score }}" aria-valuemin="0" aria-valuemax="100"></div>
+        </div>
+
+        <div class="row g-3">
+          {% for result in quiz_results %}
+            <div class="col-12">
+              <div class="border rounded-4 p-3 {% if result.is_correct %}border-success bg-success bg-opacity-10{% else %}border-danger bg-danger bg-opacity-10{% endif %}">
+                <div class="d-flex justify-content-between align-items-start gap-3">
+                  <div>
+                    <div class="fw-semibold mb-2">Question {{ loop.index }}</div>
+                    <div class="mb-2">{{ result.question }}</div>
+                    <div class="small text-muted">Your answer: {{ result.selected or 'No answer selected' }}</div>
+                    {% if not result.is_correct %}
+                      <div class="small text-success fw-semibold">Correct answer: {{ result.correct }}</div>
+                    {% endif %}
+                  </div>
+                  <span class="badge {% if result.is_correct %}bg-success{% else %}bg-danger{% endif %} rounded-pill">
+                    {% if result.is_correct %}Correct{% else %}Wrong{% endif %}
+                  </span>
+                </div>
+              </div>
+            </div>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+  {% endif %}
+
+  <div class="card border-0 shadow-sm mb-4">
+    <div class="card-body p-4">
+      <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
+        <div>
+          <h4 class="fw-bold mb-1">Recent quiz history</h4>
+          <p class="text-muted mb-0">Your latest saved attempts and scores.</p>
+        </div>
+        {% if quiz_history %}
+          <span class="badge bg-primary-subtle text-primary rounded-pill px-3 py-2">{{ quiz_history|length }} saved</span>
+        {% endif %}
+      </div>
+
+      {% if quiz_history %}
+        <div class="table-responsive">
+          <table class="table align-middle">
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Source</th>
+                <th class="text-center">Score</th>
+                <th class="text-center">Correct</th>
+                <th class="text-end">Export</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for item in quiz_history %}
+                <tr>
+                  <td>{{ item.created_at }}</td>
+                  <td>{{ item.source_name or 'Uploaded PDF' }}</td>
+                  <td class="text-center fw-semibold">{{ item.score }}%</td>
+                  <td class="text-center">{{ item.correct_answers }}/{{ item.total_questions }}</td>
+                  <td class="text-end">
+                    <a class="btn btn-sm btn-outline-primary" href="{{ url_for('quiz_export_attempt', attempt_id=item.id) }}">
+                      <i class="fas fa-file-pdf me-1"></i>PDF
+                    </a>
+                  </td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% else %}
+        <div class="text-muted">No saved attempts yet. Complete a quiz to build your score history.</div>
+      {% endif %}
+    </div>
+  </div>
+
+  {% if quiz_questions %}
+    <div class="card border-0 shadow-sm quiz-question-shell mb-4">
+      <div class="card-body p-4 p-lg-5">
+        <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
+          <div>
+            <h4 class="fw-bold mb-1">Answer the generated quiz</h4>
+            <p class="text-muted mb-0">Choose one answer per question and submit to see your score.</p>
+          </div>
+          <span class="badge bg-primary-subtle text-primary rounded-pill px-3 py-2">{{ quiz_questions|length }} questions</span>
+        </div>
+
+        <form method="POST" class="quiz-form">
+          <input type="hidden" name="action" value="grade" />
+          <input type="hidden" name="source_name" value="{{ source_name or '' }}" />
+          <input type="hidden" name="quiz_data" value='{{ quiz_questions|tojson }}' />
+
+          <div class="row g-3">
+            {% for question in quiz_questions %}
+              {% set question_index = loop.index0 %}
+              <div class="col-12">
+                <div class="card border-0 bg-body-tertiary quiz-question-card h-100">
+                  <div class="card-body p-4">
+                    <div class="fw-semibold mb-3">Question {{ loop.index }}</div>
+                    <p class="mb-3">{{ question.question }}</p>
+                    <div class="row g-2">
+                      {% for option in question.options %}
+                        <div class="col-12 col-md-6">
+                          <label class="quiz-option w-100">
+                            <input class="form-check-input me-2" type="radio" name="answer_{{ question_index }}" value="{{ option }}" required>
+                            <span>{{ option }}</span>
+                          </label>
+                        </div>
+                      {% endfor %}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            {% endfor %}
+          </div>
+
+          <div class="d-grid d-md-flex justify-content-md-end mt-4">
+            <button type="submit" class="btn btn-success btn-lg px-5">
+              <i class="fas fa-check-circle me-2"></i>Submit Answers
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  {% endif %}
+
+</div>
+{% endblock %}

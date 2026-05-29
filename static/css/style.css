@@ -1,0 +1,363 @@
+/* ============================================================
+   AI Study Planner — Custom Stylesheet
+   Supports Bootstrap 5.3 native dark mode (data-bs-theme="dark")
+   ============================================================ */
+
+/* ── Layout ──────────────────────────────────────────────────────────────── */
+body {
+  min-height: 100vh;
+}
+
+.main-content {
+  padding-top: 70px;   /* offset for fixed navbar */
+  min-height: 100vh;
+}
+
+/* ── Navbar ──────────────────────────────────────────────────────────────── */
+#mainNav {
+  background-color: var(--bs-body-bg);
+  border-bottom: 1px solid var(--bs-border-color);
+  transition: background-color 0.3s;
+}
+
+[data-bs-theme="dark"] #mainNav {
+  background-color: #1a1d23;
+  border-bottom-color: #2d3748;
+}
+
+/* ── Flash messages ──────────────────────────────────────────────────────── */
+.flash-container {
+  position: fixed;
+  top: 70px;
+  right: 1rem;
+  z-index: 1055;
+  width: 340px;
+  max-width: 95vw;
+}
+
+/* ── Auth pages ──────────────────────────────────────────────────────────── */
+.auth-body {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+[data-bs-theme="dark"] .auth-body {
+  background: linear-gradient(135deg, #1a1d23 0%, #2d3748 100%);
+}
+
+.auth-brand-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  background: rgba(67, 97, 238, 0.12);
+}
+
+/* ── Stat cards ──────────────────────────────────────────────────────────── */
+.stat-card {
+  border-radius: 12px;
+  transition: transform 0.2s, box-shadow 0.2s;
+  cursor: default;
+}
+
+.stat-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12) !important;
+}
+
+.stat-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ── Subject cards ───────────────────────────────────────────────────────── */
+.subject-card {
+  border-radius: 12px;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.subject-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12) !important;
+}
+
+/* ── Quiz page ───────────────────────────────────────────────────────────── */
+.quiz-hero {
+  border-radius: 18px;
+  background: linear-gradient(135deg, rgba(13, 110, 253, 0.08), rgba(25, 135, 84, 0.08));
+}
+
+.quiz-score-pill {
+  min-width: 88px;
+  padding: 0.85rem 1rem;
+  border-radius: 999px;
+  background: var(--bs-primary);
+  color: #fff;
+  text-align: center;
+  font-size: 1.35rem;
+  font-weight: 800;
+}
+
+.quiz-question-shell {
+  border-radius: 18px;
+}
+
+.quiz-question-card {
+  border-radius: 16px;
+}
+
+.quiz-option {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 0.75rem 0.9rem;
+  border: 1px solid var(--bs-border-color);
+  border-radius: 12px;
+  background: var(--bs-body-bg);
+  cursor: pointer;
+}
+
+.quiz-option:hover {
+  border-color: var(--bs-primary);
+}
+
+/* ── Reminder items ──────────────────────────────────────────────────────── */
+.reminder-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid var(--bs-border-color);
+  font-size: 0.875rem;
+}
+
+.reminder-item:last-child {
+  border-bottom: none;
+}
+
+.reminder-urgent {
+  background-color: rgba(220, 53, 69, 0.08);
+  border-left: 3px solid #dc3545;
+}
+
+.reminder-soon {
+  background-color: rgba(255, 193, 7, 0.08);
+  border-left: 3px solid #ffc107;
+}
+
+/* ── Focus Mode timer widget ─────────────────────────────────────────────── */
+.timer-widget {
+  position: fixed;
+  bottom: 1.5rem;
+  left: 1.5rem;
+  z-index: 1040;
+  width: min(92vw, 360px);
+  background: #1e293b;
+  color: #f8fafc;
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+  transition: all 0.3s ease;
+}
+
+.timer-widget.compact {
+  width: min(88vw, 280px);
+}
+
+.timer-header {
+  padding: 0.6rem 0.9rem;
+  background: #4361ee;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: grab;
+  user-select: none;
+}
+
+.timer-header > span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.timer-controls-row {
+  width: 100%;
+}
+
+.timer-controls-row .form-select,
+.timer-controls-row .form-control {
+  min-width: 0;
+}
+
+.timer-custom-fields {
+  width: 100%;
+}
+
+.timer-widget.compact .timer-custom-fields,
+.timer-widget.compact .timer-alarm-url,
+.timer-widget.compact .timer-alarm-minutes {
+  display: none !important;
+}
+
+.timer-widget.compact .timer-schedule-hint {
+  display: block;
+}
+
+.timer-schedule-hint {
+  min-height: 1.1rem;
+}
+
+.timer-alarm-url {
+  flex: 1 1 180px;
+  min-width: 0;
+  display: none;
+}
+
+.timer-alarm-minutes {
+  width: 80px;
+  display: none;
+}
+
+.timer-header:active {
+  cursor: grabbing;
+}
+
+#timerBody {
+  padding: 0.75rem 1rem 1rem;
+}
+
+.timer-display {
+  font-size: clamp(2rem, 5vw, 2.35rem);
+  font-weight: 800;
+  text-align: center;
+  letter-spacing: 0.08em;
+  color: #f8fafc;
+  line-height: 1.1;
+}
+
+.timer-label {
+  text-align: center;
+  font-size: 0.78rem;
+  color: #94a3b8;
+  margin-bottom: 0.25rem;
+}
+
+/* Minimize / collapsed state */
+.timer-widget.minimized #timerBody {
+  display: none !important;
+}
+
+.timer-widget.expanded {
+  width: min(96vw, 520px);
+}
+
+.timer-widget.expanded .timer-display {
+  font-size: clamp(2.4rem, 7vw, 3.5rem);
+}
+
+.timer-widget.expanded .timer-controls-row {
+  gap: 0.5rem;
+}
+
+.timer-widget.expanded .timer-alarm-url {
+  display: block;
+}
+
+.timer-widget.expanded .timer-alarm-minutes {
+  display: block;
+}
+
+/* ── Dark-mode toggle smooth transition ──────────────────────────────────── */
+html {
+  transition: background-color 0.3s, color 0.3s;
+}
+
+/* ── Cards general ───────────────────────────────────────────────────────── */
+.card {
+  border-radius: 12px;
+}
+
+/* ── Table tweaks ────────────────────────────────────────────────────────── */
+.table th {
+  font-weight: 600;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--bs-secondary-color);
+}
+
+/* ── Badge with opacity background ──────────────────────────────────────── */
+.bg-primary.bg-opacity-15 {
+  background-color: rgba(67, 97, 238, 0.15) !important;
+}
+
+/* ── Responsive ──────────────────────────────────────────────────────────── */
+@media (max-width: 576px) {
+  .timer-widget {
+    width: calc(100vw - 2rem);
+    bottom: 1rem;
+    left: 1rem;
+  }
+
+  .timer-widget.expanded {
+    width: calc(100vw - 1rem);
+    left: 0.5rem;
+    right: 0.5rem;
+  }
+
+  .timer-display {
+    font-size: clamp(1.8rem, 12vw, 2.4rem);
+  }
+
+  .timer-controls-row .form-select,
+  .timer-controls-row .form-control {
+    width: 100% !important;
+  }
+
+  .flash-container {
+    width: calc(100vw - 2rem);
+    right: 1rem;
+  }
+}
+
+/* ── Scrollbar (webkit) ──────────────────────────────────────────────────── */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #94a3b8; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #64748b; }
+
+/* ── Focus rings ─────────────────────────────────────────────────────────── */
+:focus-visible {
+  outline: 2px solid #4361ee;
+  outline-offset: 2px;
+}
+
+/* ── Productivity bar (on dashboard card) ────────────────────────────────── */
+.progress.productivity-bar {
+  height: 8px;
+  border-radius: 4px;
+}
+
+/* ── Animated skeleton loader (used while charts fetch data) ─────────────── */
+@keyframes shimmer {
+  0%   { background-position: -600px 0; }
+  100% { background-position:  600px 0; }
+}
+
+.skeleton {
+  background: linear-gradient(90deg, #e2e8f0 25%, #f8fafc 50%, #e2e8f0 75%);
+  background-size: 600px 100%;
+  animation: shimmer 1.4s infinite linear;
+  border-radius: 6px;
+}
+
+[data-bs-theme="dark"] .skeleton {
+  background: linear-gradient(90deg, #2d3748 25%, #3d4a5c 50%, #2d3748 75%);
+  background-size: 600px 100%;
+}

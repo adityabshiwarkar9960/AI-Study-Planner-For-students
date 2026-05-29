@@ -1,0 +1,102 @@
+{% extends "base.html" %}
+{% block title %}Remaining Schedule — AI Study Planner{% endblock %}
+
+{% block content %}
+<div class="container px-4 py-4">
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h4 class="fw-bold mb-0">Remaining Schedule</h4>
+    <a class="btn btn-outline-secondary" href="{{ url_for('planner') }}">← Back to Today's Planner</a>
+  </div>
+
+  <div class="card border-0 shadow-sm">
+    <div class="card-body p-0">
+      <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0" id="remainingScheduleTable">
+          <thead>
+            <tr>
+              <th class="ps-3">Date</th>
+              <th>Day</th>
+              <th>Subject</th>
+              <th>Time</th>
+              <th>Study Hours</th>
+              <th>Status</th>
+              <th class="text-end pe-3">Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in remaining_rows %}
+              <tr data-id="{{ row.id if not row.is_placeholder else '' }}" data-subject="{{ row.subject }}" data-date="{{ row.date if not row.is_placeholder else '' }}" data-time="{{ row.scheduled_time if not row.is_placeholder and row.scheduled_time else '' }}" data-placeholder="{{ 1 if row.is_placeholder else 0 }}" data-completed="{{ 1 if (not row.is_placeholder and row.completed) else 0 }}">
+                <td class="ps-3">{{ row.date if not row.is_placeholder else '—' }}</td>
+                {% if row.is_placeholder %}
+                  <td class="text-muted small">—</td>
+                {% else %}
+                  <td class="text-muted small" id="day-{{ row.id }}"></td>
+                {% endif %}
+                <td>
+                  <span class="badge rounded-pill bg-primary bg-opacity-15 text-primary">
+                    {{ row.subject }}
+                  </span>
+                </td>
+                <td>
+                  {% if row.is_placeholder %}
+                    <span class="text-muted">—</span>
+                  {% else %}
+                    <div class="small text-muted">{{ row.scheduled_time if row.scheduled_time else '—' }}</div>
+                  {% endif %}
+                </td>
+                <td>
+                  {% if row.is_placeholder %}
+                    <span class="text-muted">No slot</span>
+                  {% else %}
+                    <i class="fas fa-clock text-muted me-1"></i>{{ row.study_hours }}h
+                  {% endif %}
+                </td>
+                <td>
+                  {% if row.is_placeholder %}
+                    <span class="badge bg-warning text-dark">Not Planned</span>
+                  {% elif row.completed %}
+                    <span class="badge bg-success">Done</span>
+                  {% elif row.scheduled_time and row.date == today_str and row.scheduled_time > now_time %}
+                    <span class="badge bg-info text-dark">Starts at {{ row.scheduled_time }}</span>
+                  {% else %}
+                    <span class="badge bg-secondary">Pending</span>
+                  {% endif %}
+                </td>
+                <td class="text-end pe-3">
+                  {% if row.is_placeholder %}
+                    <button type="button" class="btn btn-sm btn-outline-secondary" disabled>
+                      <i class="fas fa-minus me-1"></i>N/A
+                    </button>
+                  {% else %}
+                    <div class="d-flex justify-content-end gap-2 flex-wrap">
+                      <form method="POST" action="{{ url_for('toggle_schedule_status', sid=row.id) }}" class="d-inline">
+                        {% if row.completed %}
+                          <button type="submit" class="btn btn-sm btn-outline-secondary">Undo</button>
+                        {% else %}
+                          <button type="submit" class="btn btn-sm btn-outline-success">Done</button>
+                        {% endif %}
+                      </form>
+                    </div>
+                  {% endif %}
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+<script>
+  // Populate day-of-week for each remaining row
+  document.querySelectorAll('#remainingScheduleTable tbody tr').forEach(tr => {
+    if (tr.dataset.placeholder === '1') return;
+    const dateTd = tr.cells[0].textContent.trim();
+    const daySpan = tr.querySelector('[id^="day-"]');
+    if (daySpan && dateTd) {
+      const d = new Date(dateTd + 'T00:00:00');
+      daySpan.textContent = d.toLocaleDateString('en-US', { weekday: 'short' });
+    }
+  });
+</script>
+{% endblock %}

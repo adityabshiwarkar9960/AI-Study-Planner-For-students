@@ -1,0 +1,147 @@
+{% extends "base.html" %}
+{% block title %}Manage Data — AI Study Planner{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4 py-4">
+
+  <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+    <h4 class="fw-bold mb-0">
+      <i class="fas fa-database me-2 text-primary"></i>Manage Data
+    </h4>
+    <div class="small text-muted">Control and clean your study data safely</div>
+  </div>
+
+  <div class="row g-3 mb-4">
+    <div class="col-6 col-md-2">
+      <div class="card border-0 shadow-sm text-center h-100">
+        <div class="card-body py-3">
+          <h4 class="fw-bold text-primary mb-0">{{ counts.subjects }}</h4>
+          <small class="text-muted">Subjects</small>
+        </div>
+      </div>
+    </div>
+    <div class="col-6 col-md-2">
+      <div class="card border-0 shadow-sm text-center h-100">
+        <div class="card-body py-3">
+          <h4 class="fw-bold text-warning mb-0">{{ counts.tasks }}</h4>
+          <small class="text-muted">Tasks</small>
+        </div>
+      </div>
+    </div>
+    <div class="col-6 col-md-2">
+      <div class="card border-0 shadow-sm text-center h-100">
+        <div class="card-body py-3">
+          <h4 class="fw-bold text-success mb-0">{{ counts.completed_tasks }}</h4>
+          <small class="text-muted">Completed</small>
+        </div>
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="card border-0 shadow-sm text-center h-100">
+        <div class="card-body py-3">
+          <h4 class="fw-bold text-info mb-0">{{ counts.study_sessions }}</h4>
+          <small class="text-muted">Study Sessions</small>
+        </div>
+      </div>
+    </div>
+    <div class="col-12 col-md-3">
+      <div class="card border-0 shadow-sm text-center h-100">
+        <div class="card-body py-3">
+          <h4 class="fw-bold text-secondary mb-0">{{ counts.schedules }}</h4>
+          <small class="text-muted">Scheduled Sessions</small>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="row g-3">
+    <div class="col-lg-7">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-header bg-transparent border-0 pt-3 pb-0">
+          <h6 class="fw-semibold mb-0">
+            <i class="fas fa-broom me-2 text-warning"></i>Quick Cleanup Actions
+          </h6>
+        </div>
+        <div class="card-body">
+          <p class="small text-muted mb-3">
+            These actions remove only your account data. You can keep or reset any area independently.
+          </p>
+
+          <div class="d-grid gap-2">
+            <form method="POST" action="{{ url_for('manage_data_action') }}">
+              <input type="hidden" name="action" value="clear_completed_tasks" />
+              <button class="btn btn-outline-success w-100" type="submit">
+                <i class="fas fa-check-double me-2"></i>Delete Completed Tasks
+              </button>
+            </form>
+
+            <form method="POST" action="{{ url_for('manage_data_action') }}">
+              <input type="hidden" name="action" value="clear_tasks" />
+              <button class="btn btn-outline-warning w-100" type="submit">
+                <i class="fas fa-list me-2"></i>Delete All Tasks
+              </button>
+            </form>
+
+            <form method="POST" action="{{ url_for('manage_data_action') }}">
+              <input type="hidden" name="action" value="clear_sessions" />
+              <button class="btn btn-outline-info w-100" type="submit">
+                <i class="fas fa-clock-rotate-left me-2"></i>Delete Study Sessions History
+              </button>
+            </form>
+
+            <form method="POST" action="{{ url_for('manage_data_action') }}">
+              <input type="hidden" name="action" value="clear_schedules" />
+              <button class="btn btn-outline-secondary w-100" type="submit">
+                <i class="fas fa-calendar-xmark me-2"></i>Delete Generated Schedules
+              </button>
+            </form>
+
+            <form method="POST" action="{{ url_for('manage_data_action') }}">
+              <input type="hidden" name="action" value="clear_subjects" />
+              <button class="btn btn-outline-danger w-100" type="submit"
+                      onclick="return confirm('Delete all subjects and schedules?')">
+                <i class="fas fa-book-dead me-2"></i>Delete Subjects + Schedules
+              </button>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-lg-5">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-header bg-transparent border-0 pt-3 pb-0">
+          <h6 class="fw-semibold mb-0 text-danger">
+            <i class="fas fa-triangle-exclamation me-2"></i>Danger Zone
+          </h6>
+        </div>
+        <div class="card-body">
+          <p class="small text-muted mb-3">
+            This action clears all your study data (subjects, schedules, sessions, tasks).
+            Your account login stays active.
+          </p>
+
+          <form method="POST" action="{{ url_for('manage_data_action') }}" class="d-grid gap-2">
+            <input type="hidden" name="action" value="reset_all" />
+            <label class="form-label small mb-0">Type <strong>DELETE</strong> to confirm:</label>
+            <input type="text" class="form-control" name="confirm" placeholder="DELETE" required />
+            <button class="btn btn-danger" type="submit">
+              <i class="fas fa-trash-can me-2"></i>Reset All Study Data
+            </button>
+          </form>
+
+          <hr class="my-3" />
+
+          <h6 class="small fw-semibold text-uppercase text-muted mb-2">Export before deleting</h6>
+          <div class="d-grid gap-2">
+            <a class="btn btn-sm btn-primary" href="{{ url_for('export_backup_zip') }}">
+              <i class="fas fa-file-zipper me-1"></i>Download Full Backup ZIP
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+{% endblock %}

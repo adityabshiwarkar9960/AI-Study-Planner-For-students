@@ -1,0 +1,42 @@
+{% extends 'base.html' %}
+{% block title %}Settings — AI Study Planner{% endblock %}
+
+{% block content %}
+<div class="container mt-5 pt-5">
+  <div class="row justify-content-center">
+    <div class="col-md-6">
+      <div class="card shadow-sm">
+        <div class="card-body">
+          <h5 class="card-title">Settings</h5>
+          <form method="POST">
+            <div class="mb-3">
+              <label for="daily_limit" class="form-label">Daily available hours</label>
+              <input type="number" step="0.5" min="0" class="form-control" id="daily_limit" name="daily_limit" value="{{ daily_limit }}" required />
+              <div class="form-text">Used by planner to cap daily scheduled study time.</div>
+            </div>
+            <div class="row">
+              <div class="col-md-6 mb-3">
+                <label for="focus_minutes" class="form-label">Focus minutes</label>
+                <input type="number" min="1" class="form-control" id="focus_minutes" name="focus_minutes" value="{{ timer_focus if timer_focus is defined else 25 }}" required />
+              </div>
+              <div class="col-md-6 mb-3">
+                <label for="short_minutes" class="form-label">Short break minutes</label>
+                <input type="number" min="1" class="form-control" id="short_minutes" name="short_minutes" value="{{ timer_short if timer_short is defined else 5 }}" required />
+              </div>
+              <div class="col-md-6 mb-3">
+                <label for="long_minutes" class="form-label">Long break minutes</label>
+                <input type="number" min="1" class="form-control" id="long_minutes" name="long_minutes" value="{{ timer_long if timer_long is defined else 15 }}" required />
+              </div>
+              <div class="col-md-6 mb-3">
+                <label for="sessions_before_long" class="form-label">Sessions before long break</label>
+                <input type="number" min="1" class="form-control" id="sessions_before_long" name="sessions_before_long" value="{{ timer_sessions_before_long if timer_sessions_before_long is defined else 4 }}" required />
+              </div>
+            </div>
+            <button class="btn btn-primary">Save</button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

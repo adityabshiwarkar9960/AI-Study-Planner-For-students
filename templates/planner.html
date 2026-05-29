@@ -1,0 +1,920 @@
+{% extends "base.html" %}
+{% block title %}AI Planner — AI Study Planner{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4 py-4">
+
+  <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-2">
+    <h4 class="fw-bold mb-0">
+      <i class="fas fa-wand-magic-sparkles me-2 text-primary"></i>AI Study Planner
+    </h4>
+    <div class="d-flex flex-wrap gap-2">
+      <form action="{{ url_for('planner_reschedule_missed') }}" method="POST">
+        <button type="submit" class="btn btn-outline-warning">
+          <i class="fas fa-shuffle me-2"></i>Reschedule Missed
+        </button>
+      </form>
+      <form action="{{ url_for('generate_schedule_route') }}" method="POST">
+        <button type="submit" class="btn btn-primary">
+          <i class="fas fa-robot me-2"></i>Generate / Regenerate Schedule
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- ── How it works + live priority breakdown ──────────────────────────── -->
+  <div class="card border-0 shadow-sm mb-4">
+    <div class="card-header bg-transparent border-0 pt-3 pb-0">
+      <h6 class="fw-bold mb-0">
+        <i class="fas fa-graduation-cap me-2 text-primary"></i>How the AI Works — Priority Breakdown
+      </h6>
+    </div>
+    <div class="card-body">
+
+      <!-- Formula explanation -->
+      <div class="alert alert-info border-0 py-2 mb-3">
+        <p class="mb-1 small fw-semibold">
+          <i class="fas fa-function me-1"></i>
+          priority&nbsp;=&nbsp;difficulty_weight&nbsp;×&nbsp;urgency_factor&nbsp;×&nbsp;log(days_remaining&nbsp;+&nbsp;1)
+        </p>
+        <ul class="mb-0 small text-muted ps-3">
+          <li><strong>Difficulty weight</strong> — Easy&nbsp;=&nbsp;1 · Medium&nbsp;=&nbsp;2 · Hard&nbsp;=&nbsp;3</li>
+          <li><strong>Urgency factor</strong> — max(1,&nbsp;30&nbsp;/&nbsp;days_remaining) — rises sharply as exam nears</li>
+          <li><strong>Even distribution</strong> — hours spread across all eligible days (grace day before exam excluded)</li>
+          <li><strong>Auto-balance</strong> — daily limit raised automatically when hours can't fit in remaining days</li>
+        </ul>
+      </div>
+
+      <!-- Per-subject live score cards -->
+      {% if priority_breakdown %}
+        <div class="row g-3">
+          {% for sub in priority_breakdown %}
+            <div class="col-md-6 col-xl-4">
+              <div class="card border-0 h-100"
+                   style="background:var(--bs-tertiary-bg)">
+                <div class="card-body pb-2">
+
+                  <!-- Subject name + urgency badge -->
+                  <div class="d-flex justify-content-between align-items-start mb-2">
+                    <span class="fw-semibold">{{ sub.subject_name }}</span>
+                    <span class="badge
+                      {% if sub.urgency_label == 'Critical' %}bg-danger
+                      {% elif sub.urgency_label == 'High'     %}bg-warning text-dark
+                      {% elif sub.urgency_label == 'Medium'   %}bg-info text-dark
+                      {% elif sub.urgency_label == 'Past'     %}bg-secondary
+                      {% else %}bg-success{% endif %}">
+                      {{ sub.urgency_label }}
+                    </span>
+                  </div>
+
+                  <!-- Key metrics row -->
+                  <div class="row g-2 text-center mb-2">
+                    <div class="col-4">
+                      <div class="rounded py-1" style="background:rgba(67,97,238,.1)">
+                        <div class="fw-bold text-primary small">{{ sub.weight }}</div>
+                        <div class="text-muted" style="font-size:.68rem">Weight</div>
+                      </div>
+                    </div>
+                    <div class="col-4">
+                      <div class="rounded py-1" style="background:rgba(247,37,133,.1)">
+                        <div class="fw-bold text-danger small">{{ sub.urgency_factor }}×</div>
+                        <div class="text-muted" style="font-size:.68rem">Urgency</div>
+                      </div>
+                    </div>
+                    <div class="col-4">
+                      <div class="rounded py-1" style="background:rgba(6,214,160,.1)">
+                        <div class="fw-bold text-success small">{{ sub.remaining_days }}d</div>
+                        <div class="text-muted" style="font-size:.68rem">Days left</div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Priority score bar -->
+                  <div class="d-flex justify-content-between small text-muted mb-1">
+                    <span>Priority score</span>
+                    <strong>{{ sub.score }}</strong>
+                  </div>
+                  <div class="progress mb-1" style="height:7px;border-radius:4px">
+                    <div class="progress-bar
+                      {% if sub.score_pct >= 70 %}bg-danger
+                      {% elif sub.score_pct >= 40 %}bg-warning
+                      {% else %}bg-success{% endif %}"
+                      role="progressbar"
+                      data-width="{{ sub.score_pct }}"
+                      aria-valuenow="{{ sub.score_pct }}"
+                      aria-valuemin="0" aria-valuemax="100">
+                    </div>
+                  </div>
+                  <div class="text-end" style="font-size:.68rem;color:var(--bs-secondary-color)">
+                    {{ sub.score_pct }}% of top priority
+                  </div>
+
+                </div>
+              </div>
+            </div>
+          {% endfor %}
+        </div>
+      {% else %}
+        <p class="text-muted small mb-0">
+          Add subjects above to see the live priority breakdown.
+        </p>
+      {% endif %}
+
+    </div>
+  </div>
+
+  <!-- ── Subject summary ────────────────────────────────────────────────── -->
+  {% if subjects %}
+    <div class="card border-0 shadow-sm mb-4">
+      <div class="card-header bg-transparent border-0 pt-3 pb-0">
+        <h6 class="fw-semibold mb-0">
+          <i class="fas fa-books me-2 text-success"></i>Your Subjects
+        </h6>
+      </div>
+      <div class="card-body p-0">
+        <div class="table-responsive">
+          <table class="table table-hover align-middle mb-0">
+            <thead>
+              <tr>
+                <th class="ps-3">Subject</th>
+                <th>Difficulty</th>
+                <th>Exam Date</th>
+                <th>Required</th>
+                <th>Daily</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for s in subjects %}
+                <tr>
+                  <td class="ps-3 fw-semibold">{{ s.subject_name }}</td>
+                  <td>
+                    <span class="badge
+                      {% if s.difficulty == 'Hard' %}bg-danger
+                      {% elif s.difficulty == 'Medium' %}bg-warning text-dark
+                      {% else %}bg-success{% endif %}">
+                      {{ s.difficulty }}
+                    </span>
+                  </td>
+                  <td>{{ s.exam_date }}</td>
+                  <td>{{ s.required_hours }}h</td>
+                  <td>{{ s.daily_hours }}h</td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  {% else %}
+    <div class="alert alert-warning border-0 shadow-sm mb-4">
+      <i class="fas fa-exclamation-triangle me-2"></i>
+      No subjects added yet.
+      <a href="{{ url_for('subjects') }}" class="fw-bold">Add subjects first →</a>
+    </div>
+  {% endif %}
+
+  <!-- ── Generated schedule ─────────────────────────────────────────────── -->
+  {% if schedules %}
+    <div class="card border-0 shadow-sm mb-4">
+      <div class="card-header bg-transparent border-0 pt-3 pb-0">
+        <h6 class="fw-semibold mb-0">
+          <i class="fas fa-list-check me-2 text-success"></i>AI Schedule Details
+        </h6>
+      </div>
+      <div class="card-body pb-2">
+        <div class="row g-3 mb-3">
+          <div class="col-md-4">
+            <div class="rounded p-2 text-center" style="background:rgba(67,97,238,.1)">
+              <div class="small text-muted">Total Required</div>
+              <div class="fw-bold text-primary">{{ planner_metrics.total_required }}h</div>
+            </div>
+          </div>
+          <div class="col-md-4">
+            <div class="rounded p-2 text-center" style="background:rgba(6,214,160,.1)">
+              <div class="small text-muted">Total Allocated</div>
+              <div class="fw-bold text-success">{{ planner_metrics.total_allocated }}h</div>
+            </div>
+          </div>
+          <div class="col-md-4">
+            <div class="rounded p-2 text-center" style="background:rgba(255,209,102,.2)">
+              <div class="small text-muted">Coverage</div>
+              <div class="fw-bold text-warning">{{ planner_metrics.coverage_pct }}%</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="table-responsive">
+          <table class="table table-hover align-middle mb-0">
+            <thead>
+              <tr>
+                <th class="ps-2">Subject</th>
+                <th>Deadline</th>
+                <th>Required</th>
+                <th>Allocated</th>
+                <th>Gap</th>
+                <th>Daily Limit</th>
+                <th>Coverage</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for row in subject_summary %}
+                <tr>
+                  <td class="ps-2 fw-semibold">{{ row.subject }}</td>
+                  <td>
+                    {{ row.deadline }}
+                    <div class="small text-muted">{{ row.days_left }} day{{ 's' if row.days_left != 1 else '' }} left</div>
+                  </td>
+                  <td>{{ row.required_hours }}h</td>
+                  <td class="text-success fw-semibold">{{ row.allocated_hours }}h</td>
+                  <td>
+                    {% if row.remaining_hours > 0 %}
+                      <span class="text-danger fw-semibold">{{ row.remaining_hours }}h</span>
+                    {% else %}
+                      <span class="text-success fw-semibold">0h</span>
+                    {% endif %}
+                  </td>
+                  <td>{{ row.daily_hours }}h/day</td>
+                  <td style="min-width:130px;">
+                    <div class="small fw-semibold mb-1">{{ row.coverage_pct }}%</div>
+                    <div class="progress" style="height:6px;">
+                      <div class="progress-bar {% if row.coverage_pct >= 100 %}bg-success{% elif row.coverage_pct >= 70 %}bg-info{% elif row.coverage_pct >= 40 %}bg-warning{% else %}bg-danger{% endif %}"
+                        role="progressbar"
+                        data-coverage="{{ row.coverage_pct }}"
+                        aria-valuenow="{{ row.coverage_pct }}"
+                        aria-valuemin="0"
+                        aria-valuemax="100">
+                      </div>
+                    </div>
+                  </td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <div class="row g-3 mb-4">
+      <div class="col-12 col-lg-6">
+        <div class="card border-0 shadow-sm h-100">
+          <div class="card-header bg-transparent border-0 pt-3 pb-0">
+            <h6 class="fw-semibold mb-0">
+              <i class="fas fa-chart-line me-2 text-primary"></i>Schedule Productivity Graph (Last 7 Days)
+            </h6>
+          </div>
+          <div class="card-body">
+            <div style="min-height:180px">
+              <canvas id="plannerProductivityChart" height="180"></canvas>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-12 col-lg-6">
+        <div class="card border-0 shadow-sm h-100">
+          <div class="card-header bg-transparent border-0 pt-3 pb-0">
+            <h6 class="fw-semibold mb-0">
+              <i class="fas fa-chart-column me-2 text-info"></i>Generated Schedule Graph (Subject-wise)
+            </h6>
+          </div>
+          <div class="card-body">
+            <div style="min-height:180px">
+              <canvas id="plannerSubjectGraph" height="180"></canvas>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card border-0 shadow-sm">
+      <div class="card-header bg-transparent border-0 pt-3 pb-0 d-flex justify-content-between align-items-center">
+        <h6 class="fw-semibold mb-0">
+            <i class="fas fa-calendar-check me-2 text-primary"></i>
+            Today's Schedule
+            <span class="badge bg-primary ms-2">{{ schedule_table_rows_today | length }} sessions</span>
+            <a class="btn btn-link btn-sm ms-3" href="{{ url_for('planner_remaining') }}">View remaining schedule →</a>
+          </h6>
+        <!-- Filter by subject -->
+        <div class="d-flex align-items-center gap-2">
+          <label class="text-muted small mb-0">Filter:</label>
+          <select class="form-select form-select-sm" id="filterSubject" style="width:auto">
+            <option value="all">All subjects</option>
+            {% for s in subjects %}
+              <option value="{{ s.subject_name }}">{{ s.subject_name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+      </div>
+      {% if schedule_unallocated_count > 0 %}
+        <div class="px-3 pb-2 small text-warning">
+          <i class="fas fa-circle-info me-1"></i>{{ schedule_unallocated_count }} subject(s) currently have no allocated slot.
+        </div>
+      {% endif %}
+      <div class="px-3 pb-2 small text-muted">
+        Set a study time for each subject, then use Start to jump the timer to that subject when it's time.
+      </div>
+      <div class="card-body p-0">
+        <div class="table-responsive">
+          <table class="table table-hover align-middle mb-0" id="scheduleTable">
+            <thead>
+              <tr>
+                <th class="ps-3">Date</th>
+                <th>Day</th>
+                <th>Subject</th>
+                <th>Time</th>
+                <th>Study Hours</th>
+                <th>Status</th>
+                <th class="text-end pe-3">Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for row in schedule_table_rows %}
+                {% if not row.is_placeholder and row.date == today_str %}
+                {% if not row.is_placeholder %}
+                  {% set schedule_days_left = row.date | days_until %}
+                {% endif %}
+                <tr data-id="{{ row.id if not row.is_placeholder else '' }}" data-subject="{{ row.subject }}" data-date="{{ row.date if not row.is_placeholder else '' }}" data-time="{{ row.scheduled_time if not row.is_placeholder and row.scheduled_time else '' }}" data-placeholder="{{ 1 if row.is_placeholder else 0 }}" data-completed="{{ 1 if (not row.is_placeholder and row.completed) else 0 }}">
+                  <td class="ps-3">{{ row.date if not row.is_placeholder else '—' }}</td>
+                  {% if row.is_placeholder %}
+                    <td class="text-muted small">—</td>
+                  {% else %}
+                    <td class="text-muted small" id="day-{{ row.id }}"></td>
+                  {% endif %}
+                  <td>
+                    <span class="badge rounded-pill bg-primary bg-opacity-15 text-primary">
+                      {{ row.subject }}
+                    </span>
+                  </td>
+                  <td>
+                    {% if row.is_placeholder %}
+                      <span class="text-muted">—</span>
+                    {% else %}
+                      <form class="d-flex gap-2 align-items-center schedule-time-form" data-sid="{{ row.id }}" method="POST" action="{{ url_for('update_schedule_time', sid=row.id) }}">
+                        <input type="time" class="form-control form-control-sm schedule-time-input" name="scheduled_time" value="{{ row.scheduled_time if row.scheduled_time else '' }}" style="width: 120px;">
+                        <button type="submit" class="btn btn-sm btn-outline-primary">
+                          <i class="fas fa-floppy-disk me-1"></i>Save
+                        </button>
+                      </form>
+                    {% endif %}
+                  </td>
+                  <td>
+                    {% if row.is_placeholder %}
+                      <span class="text-muted">No slot</span>
+                    {% else %}
+                      <i class="fas fa-clock text-muted me-1"></i>{{ row.study_hours }}h
+                    {% endif %}
+                  </td>
+                  <td>
+                    {% if row.is_placeholder %}
+                      <span class="badge bg-warning text-dark">Not Planned</span>
+                    {% elif row.completed %}
+                      <span class="badge bg-success">Done</span>
+                    {% elif row.scheduled_time and row.date == today_str and row.scheduled_time > now_time %}
+                      <span class="badge bg-info text-dark">Starts at {{ row.scheduled_time }}</span>
+                    {% else %}
+                      <span class="badge bg-secondary">Pending</span>
+                    {% endif %}
+                  </td>
+                  <td class="text-end pe-3">
+                    {% if row.is_placeholder %}
+                      <button type="button" class="btn btn-sm btn-outline-secondary" disabled title="No generated slot for this subject yet">
+                        <i class="fas fa-minus me-1"></i>N/A
+                      </button>
+                    {% else %}
+                      <div class="d-flex justify-content-end gap-2 flex-wrap">
+                        <button type="button" class="btn btn-sm btn-outline-primary schedule-start-btn" data-subject="{{ row.subject }}" data-sid="{{ row.id }}" data-hours="{{ row.study_hours }}" title="Start this subject in the timer">
+                          <i class="fas fa-play me-1"></i>Start
+                        </button>
+                        <form method="POST" action="{{ url_for('toggle_schedule_status', sid=row.id) }}" class="d-inline">
+                          {% if row.completed %}
+                            <button type="submit" class="btn btn-sm btn-outline-secondary" title="Mark as pending">
+                              <i class="fas fa-rotate-left me-1"></i>Undo
+                            </button>
+                          {% elif schedule_days_left > 0 or (row.scheduled_time and row.date == today_str and row.scheduled_time > now_time) %}
+                            <button type="button" class="btn btn-sm btn-outline-secondary" disabled title="Session is not due yet">
+                              <i class="fas fa-lock me-1"></i>Wait
+                            </button>
+                          {% else %}
+                            <button type="submit" class="btn btn-sm btn-outline-success" title="Mark as done">
+                              <i class="fas fa-check me-1"></i>Done
+                            </button>
+                          {% endif %}
+                        </form>
+                      </div>
+                    {% endif %}
+                  </td>
+                </tr>
+                {% endif %}
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+  {% elif subjects %}
+    <div class="card border-0 shadow-sm">
+      <div class="card-body text-center py-5">
+        <i class="fas fa-calendar-plus fa-3x text-muted mb-3 d-block"></i>
+        <h5 class="fw-semibold">No schedule generated yet</h5>
+        <p class="text-muted">Click the button above to let the AI create your study plan.</p>
+      </div>
+    </div>
+  {% endif %}
+
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script id="plannerProductivityData" type="application/json">{{ planner_productivity | tojson }}</script>
+<script id="plannerSubjectGraphData" type="application/json">{{ planner_subject_graph | tojson }}</script>
+<script>
+  // Apply data-width to progress bar width (avoids Jinja inside CSS lint error)
+  document.querySelectorAll('.progress-bar[data-width]').forEach(bar => {
+    bar.style.width = bar.dataset.width + '%';
+  });
+
+  // Apply coverage progress bars
+  document.querySelectorAll('.progress-bar[data-coverage]').forEach(bar => {
+    bar.style.width = Math.min(parseFloat(bar.dataset.coverage || '0'), 100) + '%';
+  });
+
+  // Populate day-of-week for each row
+  document.querySelectorAll('#scheduleTable tbody tr').forEach(tr => {
+    if (tr.dataset.placeholder === '1') return;
+    const dateTd = tr.cells[0].textContent.trim();
+    const daySpan = tr.querySelector('[id^="day-"]');
+    if (daySpan && dateTd) {
+      const d = new Date(dateTd + 'T00:00:00');
+      daySpan.textContent = d.toLocaleDateString('en-US', { weekday: 'short' });
+    }
+  });
+
+  // Filter by subject
+  const subjectFilter = document.getElementById('filterSubject');
+  if (subjectFilter) {
+    subjectFilter.addEventListener('change', function () {
+      const val = this.value;
+      document.querySelectorAll('#scheduleTable tbody tr').forEach(tr => {
+        tr.style.display = (val === 'all' || tr.dataset.subject === val) ? '' : 'none';
+      });
+    });
+  }
+
+  function setTimerSubject(subject, studyHours) {
+    const timerSubject = document.getElementById('timerSubject');
+    const timerStart = document.getElementById('btnStart');
+
+    // If timer UI is not present (removed), open a lightweight in-page timer modal
+    if (!timerSubject || !timerStart) {
+      if (!subject) return;
+      // fallback: show lite timer modal and start a 25-minute session
+      if (typeof showLiteTimerModal === 'function') {
+        showLiteTimerModal(subject, studyHours);
+      } else {
+        const msg = 'Timer feature has been removed; starting lite timer for ' + subject;
+        try { sendBrowserNotif('Info', msg); } catch (e) {}
+        const fc = document.getElementById('flashContainer');
+        if (fc) {
+          const id = `flash-${Date.now()}`;
+          fc.insertAdjacentHTML('afterbegin', `\n            <div id="${id}" class="alert alert-info alert-dismissible fade show shadow-sm" role="alert">\n              ${msg}\n              <button type="button" class="btn-close" data-bs-dismiss="alert"></button>\n            </div>`);
+        }
+      }
+      return;
+    }
+
+    if (!subject) return;
+
+    const existing = Array.from(timerSubject.options).some(opt => opt.value === subject);
+    if (!existing) {
+      const opt = document.createElement('option');
+      opt.value = subject;
+      opt.textContent = subject;
+      timerSubject.appendChild(opt);
+    }
+
+    timerSubject.value = subject;
+    timerStart.click();
+  }
+
+  document.querySelectorAll('.schedule-start-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const hours = parseFloat(btn.dataset.hours || '0');
+      setTimerSubject(btn.dataset.subject, Number.isFinite(hours) ? hours : 0);
+    });
+  });
+
+  // Lite timer modal fallback (used when full timer widget is removed)
+  let liteTimerInterval = null;
+  const liteFocusMinutes = 45;
+  const liteBreakMinutes = 10;
+  let liteTimerInitialSeconds = liteFocusMinutes * 60;
+  let liteTimerSecondsLeft = liteFocusMinutes * 60;
+  let liteTimerMode = 'focus';
+
+  function ringBell(times = 1) {
+    try {
+      const AudioCtx = window.AudioContext || window.webkitAudioContext;
+      if (!AudioCtx) return;
+      const ctx = new AudioCtx();
+      for (let i = 0; i < times; i += 1) {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.value = 880;
+        gain.gain.value = 0.0001;
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        const startAt = ctx.currentTime + i * 0.35;
+        gain.gain.exponentialRampToValueAtTime(0.2, startAt + 0.02);
+        gain.gain.exponentialRampToValueAtTime(0.0001, startAt + 0.25);
+        osc.start(startAt);
+        osc.stop(startAt + 0.26);
+      }
+    } catch (e) {
+      // Ignore audio errors (browser policy/device restrictions)
+    }
+  }
+
+  function formatSeconds(totalSeconds) {
+    const mm = String(Math.floor(totalSeconds / 60)).padStart(2, '0');
+    const ss = String(totalSeconds % 60).padStart(2, '0');
+    return `${mm}:${ss}`;
+  }
+
+  function renderLiteTimer() {
+    const clockEl = document.getElementById('liteTimerClock');
+    const modeEl = document.getElementById('liteTimerMode');
+    const metaEl = document.getElementById('liteTimerMeta');
+    if (clockEl) clockEl.textContent = formatSeconds(Math.max(liteTimerSecondsLeft, 0));
+    if (modeEl) modeEl.textContent = liteTimerMode === 'break' ? 'Break Time' : 'Focus Session';
+    if (metaEl) {
+      const mins = Math.max(1, Math.round(liteTimerInitialSeconds / 60));
+      metaEl.textContent = `${mins} min`;
+    }
+  }
+
+  function stopLiteTimer() {
+    if (liteTimerInterval) {
+      clearInterval(liteTimerInterval);
+      liteTimerInterval = null;
+    }
+  }
+
+  function startLiteTimer(seconds, mode) {
+    stopLiteTimer();
+    liteTimerMode = mode;
+    liteTimerInitialSeconds = Math.max(60, Math.floor(seconds));
+    liteTimerSecondsLeft = liteTimerInitialSeconds;
+    renderLiteTimer();
+
+    liteTimerInterval = setInterval(() => {
+      liteTimerSecondsLeft -= 1;
+      renderLiteTimer();
+      if (liteTimerSecondsLeft <= 0) {
+        stopLiteTimer();
+        if (liteTimerMode === 'focus') {
+          ringBell(2);
+          try {
+            sendBrowserNotif('Focus session complete', `Great work! Starting a ${liteBreakMinutes} minute break.`);
+          } catch (e) {}
+          startLiteTimer(liteBreakMinutes * 60, 'break');
+        } else {
+          ringBell(3);
+          try {
+            sendBrowserNotif('Break complete', 'Break is over. Ready for the next subject?');
+          } catch (e) {}
+        }
+      }
+    }, 1000);
+  }
+
+  function resetLiteTimer() {
+    stopLiteTimer();
+    liteTimerSecondsLeft = liteTimerInitialSeconds;
+    renderLiteTimer();
+  }
+
+  function ensureLiteTimerModal() {
+    if (document.getElementById('liteTimerModal')) return;
+    document.body.insertAdjacentHTML('beforeend', `
+      <div class="modal fade" id="liteTimerModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h5 class="modal-title"><i class="fas fa-stopwatch me-2"></i>Focus Timer</h5>
+              <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body text-center">
+              <div class="small text-muted mb-1">Subject</div>
+              <div id="liteTimerSubject" class="fw-semibold mb-3">-</div>
+              <div id="liteTimerMode" class="badge bg-primary mb-2">Focus Session</div>
+              <div id="liteTimerClock" style="font-size:2rem;font-weight:700;letter-spacing:1px;">45:00</div>
+              <div id="liteTimerMeta" class="small text-muted mt-1">45 min</div>
+              <div class="small text-muted mt-2">Auto-break after focus: ${liteBreakMinutes} min (rings at focus end and break end)</div>
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-outline-secondary" id="liteTimerStop">Stop</button>
+              <button type="button" class="btn btn-outline-danger" id="liteTimerEnd">End</button>
+              <button type="button" class="btn btn-outline-dark" id="liteTimerReset">Reset</button>
+              <button type="button" class="btn btn-outline-info" id="liteTimerBreak">Start Break</button>
+              <button type="button" class="btn btn-secondary" id="liteTimerMinimize">Minimize</button>
+              <button type="button" class="btn btn-primary" id="liteTimerStart">Start 45m</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    `);
+
+    const stopBtn = document.getElementById('liteTimerStop');
+    const endBtn = document.getElementById('liteTimerEnd');
+    const resetBtn = document.getElementById('liteTimerReset');
+    const breakBtn = document.getElementById('liteTimerBreak');
+    const startBtn = document.getElementById('liteTimerStart');
+    const minimizeBtn = document.getElementById('liteTimerMinimize');
+    const modalEl = document.getElementById('liteTimerModal');
+
+    stopBtn.addEventListener('click', () => {
+      stopLiteTimer();
+    });
+
+    endBtn.addEventListener('click', () => {
+      stopLiteTimer();
+      liteTimerMode = 'focus';
+      liteTimerInitialSeconds = liteFocusMinutes * 60;
+      liteTimerSecondsLeft = liteTimerInitialSeconds;
+      renderLiteTimer();
+      try {
+        sendBrowserNotif('Session ended', 'Current timer session ended.');
+      } catch (e) {}
+    });
+
+    startBtn.addEventListener('click', () => {
+      startLiteTimer(liteTimerInitialSeconds, 'focus');
+    });
+
+    resetBtn.addEventListener('click', () => {
+      resetLiteTimer();
+    });
+
+    breakBtn.addEventListener('click', () => {
+      startLiteTimer(liteBreakMinutes * 60, 'break');
+    });
+
+    minimizeBtn.addEventListener('click', () => {
+      const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+      modal.hide();
+      showMinimizedWidget();
+      saveTimerState();
+    });
+
+    modalEl.addEventListener('hidden.bs.modal', () => {
+      stopLiteTimer();
+      liteTimerMode = 'focus';
+      liteTimerInitialSeconds = liteFocusMinutes * 60;
+      liteTimerSecondsLeft = liteTimerInitialSeconds;
+      renderLiteTimer();
+    });
+  }
+
+  function saveTimerState() {
+    try {
+      const state = {
+        subject: document.getElementById('liteTimerSubject') ? document.getElementById('liteTimerSubject').textContent : '',
+        mode: liteTimerMode,
+        secondsLeft: liteTimerSecondsLeft,
+        initialSeconds: liteTimerInitialSeconds,
+        timestamp: Date.now(),
+      };
+      localStorage.setItem('liteTimerState', JSON.stringify(state));
+    } catch (e) { /* ignore */ }
+  }
+
+  function loadTimerState() {
+    try {
+      const raw = localStorage.getItem('liteTimerState');
+      if (!raw) return null;
+      return JSON.parse(raw);
+    } catch (e) { return null; }
+  }
+
+  function clearTimerState() {
+    try { localStorage.removeItem('liteTimerState'); } catch (e) {}
+  }
+
+  function showMinimizedWidget() {
+    if (document.getElementById('liteTimerMinimized')) return;
+    const subj = document.getElementById('liteTimerSubject') ? document.getElementById('liteTimerSubject').textContent : '-';
+    document.body.insertAdjacentHTML('beforeend', `
+      <div id="liteTimerMinimized" style="position:fixed;right:16px;bottom:16px;z-index:2000;">
+        <div class="card shadow-sm" style="width:220px;">
+          <div class="card-body p-2 d-flex align-items-center gap-2">
+            <div style="flex:1">
+              <div class="small text-muted">${subj}</div>
+              <div id="liteMinClock" class="fw-bold">${formatSeconds(liteTimerSecondsLeft)}</div>
+            </div>
+            <div class="d-flex flex-column align-items-end">
+              <button class="btn btn-sm btn-outline-primary" id="liteMinRestore" title="Restore timer"><i class="fas fa-expand"></i></button>
+              <button class="btn btn-sm btn-outline-danger mt-1" id="liteMinEnd" title="End session"><i class="fas fa-stop"></i></button>
+            </div>
+          </div>
+        </div>
+      </div>
+    `);
+
+    const restore = document.getElementById('liteMinRestore');
+    const end = document.getElementById('liteMinEnd');
+
+    restore.addEventListener('click', () => {
+      const modalEl = document.getElementById('liteTimerModal');
+      const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+      modal.show();
+      const min = document.getElementById('liteTimerMinimized');
+      if (min) min.remove();
+    });
+
+    end.addEventListener('click', () => {
+      stopLiteTimer();
+      clearTimerState();
+      const min = document.getElementById('liteTimerMinimized');
+      if (min) min.remove();
+      try { sendBrowserNotif('Session ended', 'Timer ended from minimized widget'); } catch (e) {}
+    });
+
+    // update clock every second while minimized
+    const updater = setInterval(() => {
+      const el = document.getElementById('liteMinClock');
+      if (!el) { clearInterval(updater); return; }
+      el.textContent = formatSeconds(Math.max(liteTimerSecondsLeft, 0));
+    }, 1000);
+  }
+
+  function showLiteTimerModal(subject, studyHours) {
+    ensureLiteTimerModal();
+    const modalEl = document.getElementById('liteTimerModal');
+    const subjectEl = document.getElementById('liteTimerSubject');
+    // Start always with fixed 45-minute focus cycle.
+    liteTimerInitialSeconds = liteFocusMinutes * 60;
+    liteTimerSecondsLeft = liteTimerInitialSeconds;
+    liteTimerMode = 'focus';
+    renderLiteTimer();
+    if (subjectEl) subjectEl.textContent = subject || '-';
+    const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+    modal.show();
+  }
+
+  // If timer UI is missing, keep Start buttons enabled and retitle for fallback behavior
+  if (!document.getElementById('timerSubject') || !document.getElementById('btnStart')) {
+    document.querySelectorAll('.schedule-start-btn').forEach(btn => {
+      btn.disabled = false;
+      btn.classList.remove('btn-outline-secondary');
+      btn.classList.add('btn-outline-primary');
+      btn.title = 'Start focus timer for this subject';
+    });
+  }
+
+  function notifyDueSchedules() {
+    const today = '{{ today_str }}';
+    const now = new Date();
+
+    document.querySelectorAll('#scheduleTable tbody tr').forEach(tr => {
+      if (tr.dataset.placeholder === '1' || tr.dataset.completed === '1') return;
+      if (!tr.dataset.time || tr.dataset.date !== today) return;
+
+      const notifiedKey = `schedule-notified-${tr.dataset.id}-${tr.dataset.date}-${tr.dataset.time}`;
+      try {
+        if (localStorage.getItem(notifiedKey) === '1') return;
+      } catch (e) { /* ignore */ }
+
+      const parts = tr.dataset.time.split(':').map(v => parseInt(v, 10));
+      if (parts.length !== 2 || parts.some(Number.isNaN)) return;
+
+      const scheduled = new Date(now);
+      scheduled.setHours(parts[0], parts[1], 0, 0);
+      const diff = now - scheduled;
+
+      if (diff >= 0 && diff < 60000) {
+        const subject = tr.dataset.subject;
+        if (typeof sendBrowserNotif === 'function') {
+          sendBrowserNotif('Study time started', `${subject} is scheduled for ${tr.dataset.time}. Click Start to begin.`);
+        }
+        if (typeof showMotivation === 'function') {
+          showMotivation(`⏰ ${subject} study time starts now.`);
+        }
+        try {
+          localStorage.setItem(notifiedKey, '1');
+        } catch (e) { /* ignore */ }
+      }
+    });
+  }
+
+  notifyDueSchedules();
+  setInterval(notifyDueSchedules, 30000);
+
+  // Planner productivity chart
+  const chartEl = document.getElementById('plannerProductivityChart');
+  const productivityRaw = document.getElementById('plannerProductivityData');
+
+  if (chartEl && productivityRaw) {
+    const pd = JSON.parse(productivityRaw.textContent);
+    const ctx = chartEl.getContext('2d');
+
+    new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: pd.dates.map(d =>
+          new Date(d + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })
+        ),
+        datasets: [
+          {
+            type: 'bar',
+            label: 'Planned Hours',
+            data: pd.planned,
+            backgroundColor: 'rgba(67,97,238,0.35)',
+            borderColor: '#4361ee',
+            borderWidth: 1,
+          },
+          {
+            type: 'bar',
+            label: 'Completed Hours',
+            data: pd.completed,
+            backgroundColor: 'rgba(6,214,160,0.45)',
+            borderColor: '#06d6a0',
+            borderWidth: 1,
+          },
+          {
+            type: 'line',
+            label: 'Completion %',
+            data: pd.completion_pct,
+            yAxisID: 'y1',
+            borderColor: '#f72585',
+            backgroundColor: 'rgba(247,37,133,0.15)',
+            tension: 0.35,
+            pointRadius: 4,
+            pointBackgroundColor: '#f72585',
+          }
+        ]
+      },
+      options: {
+        responsive: true,
+        interaction: { mode: 'index', intersect: false },
+        scales: {
+          y: {
+            beginAtZero: true,
+            title: { display: true, text: 'Hours' },
+            ticks: { callback: v => `${v}h` },
+          },
+          y1: {
+            beginAtZero: true,
+            max: 100,
+            position: 'right',
+            grid: { drawOnChartArea: false },
+            title: { display: true, text: 'Completion %' },
+            ticks: { callback: v => `${v}%` },
+          }
+        }
+      }
+    });
+  }
+
+  // Subject-wise generated schedule graph (shows new subjects immediately)
+  const subjectGraphEl = document.getElementById('plannerSubjectGraph');
+  const subjectGraphRaw = document.getElementById('plannerSubjectGraphData');
+
+  if (subjectGraphEl && subjectGraphRaw) {
+    const sg = JSON.parse(subjectGraphRaw.textContent);
+    const sctx = subjectGraphEl.getContext('2d');
+
+    new Chart(sctx, {
+      type: 'bar',
+      data: {
+        labels: sg.labels,
+        datasets: [
+          {
+            label: 'Required Hours',
+            data: sg.required,
+            backgroundColor: 'rgba(67,97,238,0.25)',
+            borderColor: '#4361ee',
+            borderWidth: 1,
+          },
+          {
+            label: 'Allocated Hours',
+            data: sg.allocated,
+            backgroundColor: 'rgba(6,214,160,0.35)',
+            borderColor: '#06d6a0',
+            borderWidth: 1,
+          }
+        ]
+      },
+      options: {
+        responsive: true,
+        plugins: { legend: { position: 'top' } },
+        scales: {
+          y: { beginAtZero: true, ticks: { callback: v => `${v}h` } },
+          x: { grid: { display: false } },
+        }
+      }
+    });
+  }
+</script>
+{% endblock %}
