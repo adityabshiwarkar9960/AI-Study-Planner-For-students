@@ -92,6 +92,8 @@ def safe_get(row, key, default=None):
 
 
 QUIZ_MAX_QUESTIONS = 5
+QUIZ_MIN_SENTENCE_WORDS = 8
+QUIZ_MAX_SENTENCE_WORDS = 45
 QUIZ_STOPWORDS = {
     "about", "after", "again", "also", "because", "been", "being", "between",
     "could", "doing", "during", "each", "from", "have", "having", "into", "most",
@@ -121,6 +123,42 @@ QUIZ_GENERIC_CHOICES = [
     "feature", "property", "idea", "stage", "cause", "result", "example", "solution",
 ]
 
+QUIZ_GENERIC_PHRASES = {
+    "main idea",
+    "important concepts",
+    "important concept",
+    "these tasks",
+    "this pdf",
+    "sample quiz pdf",
+    "overview",
+    "core concepts",
+    "revision notes",
+    "real-world applications",
+    "use this pdf",
+    "regular sentences",
+    "multiple-choice questions",
+    "the main idea",
+}
+
+QUIZ_GENERIC_WORDS = {
+    "important", "concept", "concepts", "overview", "notes", "applications",
+    "review", "sample", "question", "questions", "sentence", "sentences",
+    "tasks", "idea", "ideas", "pdf",
+}
+
+QUIZ_BAD_ANSWER_WORDS = {
+    "perform", "learns", "learn", "uses", "used", "using", "helps", "allows",
+    "combines", "supports", "creates", "creating", "made", "make", "making",
+    "field", "human", "normally", "requiring", "that", "these", "this", "those",
+    "carry", "needs", "include", "includes", "contains", "contain", "produce",
+    "produces", "real", "world", "tasks",
+}
+
+QUIZ_DEFINITION_CUES = (
+    "is", "are", "was", "were", "means", "refers to", "defined as",
+    "consists of", "includes", "represents", "results in", "leads to",
+)
+
 
 def _extract_pdf_text(uploaded_file) -> str:
     uploaded_file.stream.seek(0)
@@ -132,15 +170,56 @@ def _extract_pdf_text(uploaded_file) -> str:
 
 
 def _normalize_quiz_text(text: str) -> str:
-    return re.sub(r"\s+", " ", text or "").strip()
+    normalized = re.sub(r"\r\n?", "\n", text or "")
+    normalized = re.sub(r"\n{2,}", ". ", normalized)
+    normalized = re.sub(r"[\t ]+", " ", normalized)
+    normalized = re.sub(r"\s*\n\s*", " ", normalized)
+    return re.sub(r"\s+", " ", normalized).strip()
 
 
 def _split_quiz_sentences(text: str):
-    return [
-        sentence.strip()
-        for sentence in re.split(r"(?<=[.!?])\s+", text)
-        if len(sentence.strip().split()) >= 7
-    ]
+    sentences = []
+    for sentence in re.split(r"(?<=[.!?])\s+", text):
+        cleaned = sentence.strip().strip("•-–—")
+        word_count = len(cleaned.split())
+        if QUIZ_MIN_SENTENCE_WORDS <= word_count <= QUIZ_MAX_SENTENCE_WORDS:
+            sentences.append(cleaned)
+    return sentences
+
+
+def _looks_like_quiz_heading(line: str) -> bool:
+    cleaned = re.sub(r"\s+", " ", line or "").strip()
+    if not cleaned:
+        return True
+    if re.search(r"[.!?]$", cleaned):
+        return False
+
+    words = cleaned.split()
+    word_count = len(words)
+    if word_count > 10:
+        return False
+
+    if re.search(r"\b(is|are|was|were|means|refers?|defined|consists?|includes?|results?|leads?|helps|allows|supports|combines|uses|can|may|might|should)\b", cleaned, re.IGNORECASE):
+        return False
+
+    alpha_words = [word for word in words if re.search(r"[A-Za-z]", word)]
+    if not alpha_words:
+        return True
+
+    title_like = sum(1 for word in alpha_words if word[:1].isupper()) / len(alpha_words) >= 0.6
+    short_and_title_like = word_count <= 6 and title_like
+    title_with_colon = word_count <= 8 and ":" in cleaned and title_like
+    return short_and_title_like or title_with_colon
+
+
+def _quiz_content_text(text: str) -> str:
+    body_lines = []
+    for raw_line in re.split(r"\r?\n", text or ""):
+        line = re.sub(r"\s+", " ", raw_line).strip()
+        if not line or _looks_like_quiz_heading(line):
+            continue
+        body_lines.append(line)
+    return " ".join(body_lines)
 
 
 def _clean_quiz_phrase(text: str) -> str:
@@ -150,9 +229,139 @@ def _clean_quiz_phrase(text: str) -> str:
     return cleaned.strip()
 
 
+def _quiz_words(text: str):
+    return [
+        token.lower()
+        for token in re.findall(r"[A-Za-z][A-Za-z\-']+", text or "")
+        if len(token) >= 4 and token.lower() not in QUIZ_STOPWORDS
+    ]
+
+
+def _phrase_candidates_for_sentence(sentence: str):
+    words = _quiz_words(sentence)
+    candidates = []
+    for size in (3, 2, 1):
+        for index in range(0, len(words) - size + 1):
+            candidate = " ".join(words[index:index + size]).strip()
+            if len(candidate.split()) == 1 and candidate in QUIZ_STOPWORDS:
+                continue
+            candidates.append(candidate)
+    return candidates
+
+
+def _extract_definition_pair(sentence: str):
+    patterns = [
+        r"\b(?P<subject>.+?)\s+(?:is|are|was|were)\s+(?:the|a|an|one of the|part of the|type of|form of|kind of)?\s*(?P<predicate>[^.;:]{4,140}?)\s*(?:[.;,]|$)",
+        r"\b(?P<subject>.+?)\s+means\s+(?:the|a|an)?\s*(?P<predicate>[^.;:]{4,140}?)\s*(?:[.;,]|$)",
+        r"\b(?P<subject>.+?)\s+refers?\s+to\s+(?:the|a|an)?\s*(?P<predicate>[^.;:]{4,140}?)\s*(?:[.;,]|$)",
+        r"\b(?P<subject>.+?)\s+defined\s+as\s+(?:the|a|an)?\s*(?P<predicate>[^.;:]{4,140}?)\s*(?:[.;,]|$)",
+        r"\b(?P<subject>.+?)\s+consists?\s+of\s+(?:the|a|an)?\s*(?P<predicate>[^.;:]{4,140}?)\s*(?:[.;,]|$)",
+        r"\b(?P<subject>.+?)\s+includes?\s+(?:the|a|an)?\s*(?P<predicate>[^.;:]{4,140}?)\s*(?:[.;,]|$)",
+        r"\b(?P<subject>.+?)\s+represents?\s+(?:the|a|an)?\s*(?P<predicate>[^.;:]{4,140}?)\s*(?:[.;,]|$)",
+        r"\b(?P<subject>.+?)\s+results?\s+in\s+(?:the|a|an)?\s*(?P<predicate>[^.;:]{4,140}?)\s*(?:[.;,]|$)",
+        r"\b(?P<subject>.+?)\s+leads?\s+to\s+(?:the|a|an)?\s*(?P<predicate>[^.;:]{4,140}?)\s*(?:[.;,]|$)",
+    ]
+
+    for pattern in patterns:
+        match = re.search(pattern, sentence, re.IGNORECASE)
+        if not match:
+            continue
+        subject = _clean_quiz_phrase(re.split(r"[,;:]", match.group("subject"), maxsplit=1)[0])
+        predicate = _clean_quiz_phrase(match.group("predicate"))
+        if subject and predicate and _is_valid_quiz_answer(subject):
+            return subject, predicate
+    return None, None
+
+
+def _find_original_phrase(sentence: str, phrase: str):
+    if not phrase:
+        return ""
+    match = re.search(rf"\b{re.escape(phrase)}\b", sentence, re.IGNORECASE)
+    return match.group(0).strip() if match else phrase
+
+
+def _is_valid_quiz_answer(answer: str) -> bool:
+    cleaned = _clean_quiz_phrase(answer).lower()
+    if not cleaned:
+        return False
+    if cleaned in QUIZ_GENERIC_PHRASES:
+        return False
+    if cleaned.startswith(("this ", "that ", "these ", "those ", "important ", "use this ", "sample ")):
+        return False
+
+    words = cleaned.split()
+    if len(words) == 1:
+        return len(cleaned) >= 4 and cleaned not in QUIZ_GENERIC_WORDS and cleaned not in QUIZ_STOPWORDS
+    if len(words) > 4:
+        return False
+    if any(word in QUIZ_BAD_ANSWER_WORDS for word in words):
+        return False
+    return True
+
+
+def _is_meta_quiz_sentence(sentence: str) -> bool:
+    lowered = re.sub(r"\s+", " ", sentence or "").strip().lower()
+    if not lowered:
+        return True
+    return any(
+        phrase in lowered
+        for phrase in (
+            "main idea",
+            "important concepts",
+            "use this pdf",
+            "sample quiz pdf",
+            "multiple-choice questions",
+            "contains regular sentences",
+            "regular sentences",
+            "test the quiz generator",
+        )
+    )
+
+
+def _extract_salient_phrase(sentence: str, phrase_frequency: Counter, token_frequency: Counter):
+    best_phrase = None
+    best_score = -1
+
+    words = _quiz_words(sentence)
+    if not words:
+        return None
+
+    for candidate in _phrase_candidates_for_sentence(sentence):
+        if not _is_valid_quiz_answer(candidate):
+            continue
+        candidate_words = candidate.split()
+        if not candidate_words:
+            continue
+        score = phrase_frequency.get(candidate, 0) * 3
+        score += sum(token_frequency.get(word, 0) for word in candidate_words)
+        score += len(candidate_words) * 2
+        if score > best_score:
+            best_phrase = candidate
+            best_score = score
+
+    if best_phrase:
+        candidate = _find_original_phrase(sentence, best_phrase)
+        candidate_words = candidate.split()
+        if len(candidate_words) > 1:
+            has_title_case = any(word[:1].isupper() or word.isupper() for word in candidate_words)
+            if not has_title_case and phrase_frequency.get(best_phrase, 0) <= 1:
+                best_phrase = None
+            else:
+                return candidate if _is_valid_quiz_answer(candidate) else None
+        else:
+            return candidate if _is_valid_quiz_answer(candidate) else None
+
+    fallback_words = [word for word in words if word not in QUIZ_STOPWORDS]
+    if not fallback_words:
+        return None
+    fallback_words.sort(key=lambda word: (token_frequency.get(word, 0), len(word)), reverse=True)
+    candidate = _find_original_phrase(sentence, fallback_words[0])
+    return candidate if _is_valid_quiz_answer(candidate) else None
+
+
 def _sentence_score(sentence: str) -> int:
     score = len(sentence.split())
-    if re.search(r"\b(is|are|was|were|means|refers?|defined|consists?|includes?|results?|leads?)\b", sentence, re.IGNORECASE):
+    if re.search(r"\b(is|are|was|were|means|refers?|defined|consists?|includes?|results?|leads?|represents?)\b", sentence, re.IGNORECASE):
         score += 10
     if re.search(r"\b(?:important|important|main|key|primary|central|significant|because|therefore)\b", sentence, re.IGNORECASE):
         score += 4
@@ -191,6 +400,19 @@ def _extract_answer_phrase(sentence: str, term_frequency: Counter) -> str | None
     tokens.sort(key=lambda token: (term_frequency.get(token.lower(), 0), len(token)), reverse=True)
     fallback = _clean_quiz_phrase(tokens[0])
     return fallback if fallback else None
+
+
+def _build_question_prompt(sentence: str, answer: str, kind: str, clue: str = ""):
+    if kind == "definition" and clue:
+        return f"Which term is described by this statement? {clue}"
+    if kind == "definition":
+        return f"Which term is described by this statement? {sentence}"
+    if kind == "topic":
+        return f"What is the main concept discussed here? {sentence}"
+    word_count = len(answer.split())
+    if word_count <= 4 and len(answer) <= 28:
+        return f"Fill in the blank: {_mask_phrase(sentence, answer)}"
+    return f"Which option best matches this idea? {sentence}"
 
 
 def _mask_phrase(sentence: str, phrase: str) -> str:
@@ -259,33 +481,51 @@ def _build_distractors(answer: str, answer_pool, term_frequency: Counter):
 
 
 def _build_quiz_questions(text: str, limit: int = QUIZ_MAX_QUESTIONS):
-    normalized = _normalize_quiz_text(text)
+    normalized = _normalize_quiz_text(_quiz_content_text(text))
     if not normalized:
         return []
 
     sentences = _split_quiz_sentences(normalized)
-    tokens = [
-        token.lower()
-        for token in re.findall(r"[A-Za-z][A-Za-z\-']+", normalized)
-        if len(token) >= 5 and token.lower() not in QUIZ_STOPWORDS
-    ]
+    tokens = _quiz_words(normalized)
     if not sentences or not tokens:
         return []
 
     frequency = Counter(tokens)
+    phrase_frequency = Counter()
+    for sentence in sentences:
+        phrase_frequency.update(_phrase_candidates_for_sentence(sentence))
+
     candidate_rows = []
     for sentence in sentences:
-        answer_text = _extract_answer_phrase(sentence, frequency)
+        if _is_meta_quiz_sentence(sentence):
+            continue
+
+        subject_text, predicate_text = _extract_definition_pair(sentence)
+        if subject_text and predicate_text:
+            subject_bonus = 8 if any(part[:1].isupper() or part.isupper() for part in subject_text.split()) else 0
+            candidate_rows.append({
+                "sentence": sentence,
+                "answer": subject_text,
+                "question": _build_question_prompt(sentence, subject_text, "definition", clue=predicate_text),
+                "kind": "definition",
+                "score": _sentence_score(sentence) + (len(subject_text.split()) * 5) + min(len(predicate_text.split()), 6) + subject_bonus,
+            })
+            continue
+
+        answer_text = _extract_salient_phrase(sentence, phrase_frequency, frequency)
         if not answer_text:
             continue
-        masked_sentence = _mask_phrase(sentence, answer_text)
-        if masked_sentence == sentence:
-            continue
+
+        answer_bonus = 8 if any(part[:1].isupper() or part.isupper() for part in answer_text.split()) else 0
+        if len(answer_text.split()) == 1 and answer_text.lower() == answer_text:
+            answer_bonus -= 3
+
         candidate_rows.append({
             "sentence": sentence,
             "answer": answer_text,
-            "question": _quiz_prompt_for(sentence, answer_text),
-            "score": _sentence_score(sentence),
+            "question": _build_question_prompt(sentence, answer_text, "topic"),
+            "kind": "topic",
+            "score": _sentence_score(sentence) + (len(answer_text.split()) * 5) + answer_bonus,
         })
 
     candidate_rows.sort(key=lambda row: row["score"], reverse=True)
@@ -820,8 +1060,16 @@ def logout():
     return redirect(url_for("login"))
 
 
-# ── Dashboard ─────────────────────────────────────────────────────────────────
+# ── Public landing page ───────────────────────────────────────────────────────
 @app.route("/")
+def index():
+    if "user_id" in session:
+        return redirect(url_for("dashboard"))
+    return render_template("index.html")
+
+
+# ── Dashboard ─────────────────────────────────────────────────────────────────
+@app.route("/dashboard")
 @login_required
 def dashboard():
     uid   = session["user_id"]

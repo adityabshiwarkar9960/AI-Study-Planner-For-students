@@ -13,6 +13,12 @@
 
 <body class="auth-body">
 
+  <div class="position-fixed top-0 start-0 p-3" style="z-index:999">
+    <a href="{{ url_for('index') }}" class="btn btn-sm btn-light shadow-sm">
+      <i class="fas fa-arrow-left me-2"></i>Home
+    </a>
+  </div>
+
   <!-- Dark-mode toggle (top-right) -->
   <div class="position-fixed top-0 end-0 p-3" style="z-index:999">
     <div class="form-check form-switch mb-0">
@@ -76,9 +82,9 @@
             <i class="fas fa-sign-in-alt me-2"></i>Login
           </button>
        <div class="mb-3 text-end small">
-        <center class="mb-0 small">
-           <a href="{{ url_for('forgot') }}">Forgot password?</a>
-         </div></center>
+        <div class="mb-3 text-end small">
+          <a href="{{ url_for('forgot') }}">Forgot password?</a>
+        </div>
         </form>
 
         <hr class="my-4" />

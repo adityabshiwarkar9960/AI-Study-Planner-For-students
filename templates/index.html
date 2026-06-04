@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="en" data-bs-theme="light">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AI Study Planner</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}" />
+</head>
+
+<body class="landing-body">
+  <div class="position-fixed top-0 end-0 p-3" style="z-index:999">
+    <div class="form-check form-switch mb-0 text-white">
+      <input class="form-check-input" type="checkbox" id="darkToggle" role="switch" />
+      <label class="form-check-label text-white-50" for="darkToggle">
+        <i class="fas fa-moon"></i>
+      </label>
+    </div>
+  </div>
+
+  <main class="landing-page min-vh-100 text-white">
+    <div class="landing-shell">
+      <header class="landing-nav">
+        <div class="container d-flex align-items-center justify-content-between gap-3">
+          <a class="landing-brand d-inline-flex align-items-center fw-bold fs-5" href="{{ url_for('index') }}">
+            <i class="fas fa-graduation-cap me-2 text-warning"></i>AI Study Planner
+          </a>
+          <div class="d-flex gap-2">
+            <a href="#features" class="btn btn-sm btn-outline-light rounded-pill px-3">Features</a>
+            <a href="{{ url_for('login') }}" class="btn btn-sm btn-light rounded-pill px-3 fw-semibold">Login</a>
+          </div>
+        </div>
+      </header>
+
+      <section class="landing-hero">
+        <div class="container">
+          <div class="row align-items-center g-5">
+            <div class="col-lg-7">
+              <div class="landing-pill mb-3">
+                <i class="fas fa-sparkles"></i>
+                The ultimate student productivity tool
+              </div>
+              <p class="landing-kicker mb-2 opacity-75">Plan smarter. Stress less.</p>
+              <h1 class="display-4 fw-bold lh-sm mb-3">
+                Keep classes, tasks, and exams organized in one place.
+              </h1>
+              <p class="lead opacity-75 mb-4" style="max-width: 42rem;">
+                Designed for the real demands of student life, this planner helps you organize your schedule, stay focused, and keep every deadline visible.
+              </p>
+
+              <div class="d-flex flex-wrap gap-3 mb-4">
+                <a href="{{ url_for('login') }}" class="btn btn-light btn-lg fw-semibold px-4">
+                  <i class="fas fa-right-to-bracket me-2"></i>Get started for free
+                </a>
+                <a href="{{ url_for('signup') }}" class="btn btn-outline-light btn-lg fw-semibold px-4">
+                  Create account
+                </a>
+              </div>
+
+              <div class="row g-3">
+                <div class="col-md-4">
+                  <div class="landing-feature-card p-3 h-100">
+                    <div class="fw-semibold fs-4">Organize</div>
+                    <div class="small text-white-50">Classes, homework, and exam dates</div>
+                  </div>
+                </div>
+                <div class="col-md-4">
+                  <div class="landing-feature-card p-3 h-100">
+                    <div class="fw-semibold fs-4">Focus</div>
+                    <div class="small text-white-50">Study sessions and productivity tools</div>
+                  </div>
+                </div>
+                <div class="col-md-4">
+                  <div class="landing-feature-card p-3 h-100">
+                    <div class="fw-semibold fs-4">Track</div>
+                    <div class="small text-white-50">Progress, reminders, and deadlines</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="col-lg-5">
+              <div class="card landing-panel border-0 overflow-hidden">
+                <div class="card-body p-4 p-md-5 text-body">
+                  <div class="mb-4">
+                    <span class="badge text-bg-primary-subtle text-primary-emphasis rounded-pill px-3 py-2 mb-3">Everything for school, in one place</span>
+                    <h2 class="h3 fw-bold mb-2">Your all-in-one study dashboard</h2>
+                    <p class="text-muted mb-0">Open the dashboard, manage tasks, and build a study routine that actually holds up.</p>
+                  </div>
+
+                  <div class="d-grid gap-3 mb-4">
+                    <a href="{{ url_for('login') }}" class="btn btn-primary btn-lg fw-semibold py-3">
+                      <i class="fas fa-sign-in-alt me-2"></i>Login
+                    </a>
+                    <a href="{{ url_for('signup') }}" class="btn btn-outline-primary btn-lg fw-semibold py-3">
+                      <i class="fas fa-user-plus me-2"></i>Sign up
+                    </a>
+                  </div>
+
+                  <div class="row g-3 text-center">
+                    <div class="col-4">
+                      <div class="landing-metric h-100">
+                        <div class="metric-icon mb-2"><i class="fas fa-calendar-check"></i></div>
+                        <div class="fw-bold">Calendar</div>
+                        <small class="text-muted">Plan your week</small>
+                      </div>
+                    </div>
+                    <div class="col-4">
+                      <div class="landing-metric h-100">
+                        <div class="metric-icon mb-2"><i class="fas fa-bell"></i></div>
+                        <div class="fw-bold">Alerts</div>
+                        <small class="text-muted">Never miss due dates</small>
+                      </div>
+                    </div>
+                    <div class="col-4">
+                      <div class="landing-metric h-100">
+                        <div class="metric-icon mb-2"><i class="fas fa-bullseye"></i></div>
+                        <div class="fw-bold">Focus</div>
+                        <small class="text-muted">Study with intent</small>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="features" class="landing-section pt-0">
+        <div class="container">
+          <div class="landing-section-title mb-4">
+            <p class="landing-kicker mb-2 opacity-75">The productivity method</p>
+            <h2 class="fw-bold mb-2">A simple flow that helps students stay ahead</h2>
+            <p class="mb-0 opacity-75">The page is structured like a modern student-productivity homepage: a strong promise, clear benefits, and a final action to log in or create an account.</p>
+          </div>
+
+          <div class="row g-4">
+            <div class="col-md-4">
+              <div class="landing-step">
+                <div class="landing-step-number mb-3">1</div>
+                <h3 class="h5 fw-bold">Get organized</h3>
+                <p class="text-muted mb-0">Put your subjects, deadlines, and study blocks in one place with a planner built around academic life.</p>
+              </div>
+            </div>
+            <div class="col-md-4">
+              <div class="landing-step">
+                <div class="landing-step-number mb-3">2</div>
+                <h3 class="h5 fw-bold">Stay ahead</h3>
+                <p class="text-muted mb-0">Track what is due, what is next, and what needs your attention before it turns into a missed deadline.</p>
+              </div>
+            </div>
+            <div class="col-md-4">
+              <div class="landing-step">
+                <div class="landing-step-number mb-3">3</div>
+                <h3 class="h5 fw-bold">Work productively</h3>
+                <p class="text-muted mb-0">Use focus tools and visible progress to keep momentum and make study time feel less overwhelming.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="landing-section pt-0">
+        <div class="container">
+          <div class="row g-4 align-items-center">
+            <div class="col-lg-5">
+              <div class="landing-quote p-4 p-md-5">
+                <p class="landing-kicker mb-2 text-primary">Goodbye chaos. Hello control.</p>
+                <h2 class="fw-bold mb-3 text-body">Stop bouncing between calendars, reminders, and separate study apps.</h2>
+                <p class="text-muted mb-0">
+                  This planner keeps your academic life in one dashboard so you can spend less time organizing and more time doing the work.
+                </p>
+              </div>
+            </div>
+
+            <div class="col-lg-7">
+              <div class="row g-3">
+                <div class="col-md-6">
+                  <div class="landing-metric h-100">
+                    <div class="metric-icon mb-2"><i class="fas fa-clock"></i></div>
+                    <div class="fw-bold mb-1">Focus timer</div>
+                    <small class="text-muted">Timed study sessions that keep you on track.</small>
+                  </div>
+                </div>
+                <div class="col-md-6">
+                  <div class="landing-metric h-100">
+                    <div class="metric-icon mb-2"><i class="fas fa-list-check"></i></div>
+                    <div class="fw-bold mb-1">Task manager</div>
+                    <small class="text-muted">Assignments, deadlines, and priorities in one view.</small>
+                  </div>
+                </div>
+                <div class="col-md-6">
+                  <div class="landing-metric h-100">
+                    <div class="metric-icon mb-2"><i class="fas fa-chart-line"></i></div>
+                    <div class="fw-bold mb-1">Progress tracking</div>
+                    <small class="text-muted">See what you have completed and what still needs attention.</small>
+                  </div>
+                </div>
+                <div class="col-md-6">
+                  <div class="landing-metric h-100">
+                    <div class="metric-icon mb-2"><i class="fas fa-bell"></i></div>
+                    <div class="fw-bold mb-1">Smart reminders</div>
+                    <small class="text-muted">Keep exams, tasks, and study goals in sight.</small>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="landing-section pt-0">
+        <div class="container">
+          <div class="landing-section-title mb-4">
+            <p class="landing-kicker mb-2 opacity-75">Frequently asked questions</p>
+            <h2 class="fw-bold mb-2">What students usually want to know</h2>
+          </div>
+
+          <div class="accordion landing-faq" id="landingFaq">
+            <div class="accordion-item mb-3">
+              <h2 class="accordion-header" id="faqOne">
+                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faqOneBody">
+                  What can I do with this planner?
+                </button>
+              </h2>
+              <div id="faqOneBody" class="accordion-collapse collapse" data-bs-parent="#landingFaq">
+                <div class="accordion-body text-muted">You can organize subjects, manage tasks, view schedules, and keep your study routine in one app.</div>
+              </div>
+            </div>
+
+            <div class="accordion-item mb-3">
+              <h2 class="accordion-header" id="faqTwo">
+                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faqTwoBody">
+                  Do I need to set up everything at once?
+                </button>
+              </h2>
+              <div id="faqTwoBody" class="accordion-collapse collapse" data-bs-parent="#landingFaq">
+                <div class="accordion-body text-muted">No. You can start with a few subjects or tasks and build your planner as your schedule grows.</div>
+              </div>
+            </div>
+
+            <div class="accordion-item">
+              <h2 class="accordion-header" id="faqThree">
+                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faqThreeBody">
+                  What should I do next?
+                </button>
+              </h2>
+              <div id="faqThreeBody" class="accordion-collapse collapse" data-bs-parent="#landingFaq">
+                <div class="accordion-body text-muted">Log in if you already have an account, or create one now to start planning your study life.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="landing-section pt-0 pb-5">
+        <div class="container">
+          <div class="card landing-panel border-0 text-center">
+            <div class="card-body p-4 p-md-5 text-body">
+              <p class="landing-kicker mb-2 text-primary">Ready to get started?</p>
+              <h2 class="fw-bold mb-3">Take control of your school life with one focused planner.</h2>
+              <p class="text-muted mb-4 mx-auto" style="max-width: 42rem;">
+                Open the login page to continue, or create a new account and build your study system from the ground up.
+              </p>
+              <div class="d-flex flex-wrap justify-content-center gap-3">
+                <a href="{{ url_for('login') }}" class="btn btn-primary btn-lg fw-semibold px-4">
+                  <i class="fas fa-right-to-bracket me-2"></i>Log in
+                </a>
+                <a href="{{ url_for('signup') }}" class="btn btn-outline-primary btn-lg fw-semibold px-4">
+                  Create account
+                </a>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+</body>
+</html>
