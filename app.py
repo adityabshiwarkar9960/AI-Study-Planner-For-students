@@ -16,6 +16,7 @@ import io
 import random
 import re
 import zipfile
+import tempfile
 from datetime import datetime, date, timedelta
 from functools import wraps
 from collections import defaultdict, Counter
@@ -38,10 +39,33 @@ from email.message import EmailMessage
 from werkzeug.utils import secure_filename
 
 
+BASE_DIR = os.path.dirname(__file__)
+
+
+def get_database_path():
+    """Return a writable database path for the current environment."""
+    override_path = os.environ.get("DATABASE_PATH")
+    if override_path:
+        return override_path
+    if os.environ.get("VERCEL") == "1" or os.environ.get("VERCEL_ENV"):
+        return os.path.join(tempfile.gettempdir(), "ai_student_planner.db")
+    return os.path.join(BASE_DIR, "database.db")
+
+
+def get_upload_folder():
+    """Return the avatar upload folder for the current environment."""
+    override_path = os.environ.get("UPLOAD_FOLDER")
+    if override_path:
+        return override_path
+    if os.environ.get("VERCEL") == "1" or os.environ.get("VERCEL_ENV"):
+        return os.path.join(tempfile.gettempdir(), "uploads", "avatars")
+    return os.path.join(BASE_DIR, "static", "uploads", "avatars")
+
+
 # Password reset tokens table creation
 def ensure_password_resets_table():
     # Use direct sqlite connection here because get_db() may not be defined yet
-    db_path = os.path.join(os.path.dirname(__file__), "database.db")
+    db_path = get_database_path()
     conn = sqlite3.connect(db_path)
     conn.row_factory = sqlite3.Row
     conn.execute("""
@@ -61,8 +85,8 @@ ensure_password_resets_table()
 # ── App configuration ────────────────────────────────────────────────────────
 app = Flask(__name__)
 app.secret_key = os.environ.get("SECRET_KEY", "study-planner-secret-key-2024")
-DATABASE = os.path.join(os.path.dirname(__file__), "database.db")
-UPLOAD_FOLDER = os.path.join(os.path.dirname(__file__), 'static', 'uploads', 'avatars')
+DATABASE = get_database_path()
+UPLOAD_FOLDER = get_upload_folder()
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 
@@ -828,6 +852,11 @@ def init_db():
         conn.execute("ALTER TABLE schedules ADD COLUMN scheduled_time TEXT")
         conn.commit()
     conn.close()
+
+
+# Initialize database tables when the module is imported so serverless hosts
+# have the schema available without relying on __main__ startup code.
+init_db()
 
 
 def auto_reschedule_missed_sessions(user_id: int, conn) -> int:
@@ -2434,7 +2463,6 @@ def api_reminders():
 
 # ── Entry point ───────────────────────────────────────────────────────────────
 if __name__ == "__main__":
-    init_db()
     host = "0.0.0.0"
     port = 5000
     local_url = f"http://127.0.0.1:{port}"
