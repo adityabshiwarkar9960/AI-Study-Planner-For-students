@@ -25,6 +25,7 @@ backups/*.bak
 instance/
 .env
 .env.*
+!.env.example
 .render/
 
 # Uploaded/generated files
