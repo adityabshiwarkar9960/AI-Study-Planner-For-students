@@ -6,8 +6,8 @@ setuptools>=65.5.0
 wheel
 numpy==1.26.4
 pandas==2.2.2
-flask
-gunicorn
+scikit-learn
+openai
 pypdf==6.12.2
 reportlab==4.5.1
 # (OpenAI integration removed) Install manually if you need it later.
