@@ -4,10 +4,8 @@ gunicorn==22.0.0
 # Install build helpers first, then numpy so pandas can use binary wheels
 setuptools>=65.5.0
 wheel
-pip install --upgrade pip && pip install --only-binary=:all: -r requirements.txt
-numpy>=1.25.0
+numpy==1.26.4
 pandas==2.2.2
-
 pypdf==6.12.2
 reportlab==4.5.1
 # (OpenAI integration removed) Install manually if you need it later.
