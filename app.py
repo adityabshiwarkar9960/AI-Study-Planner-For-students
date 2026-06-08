@@ -42,12 +42,20 @@ from werkzeug.utils import secure_filename
 BASE_DIR = os.path.dirname(__file__)
 
 
+def _is_hosted_runtime():
+    """Return True when running on a hosted platform with ephemeral storage."""
+    return any(
+        os.environ.get(name)
+        for name in ("RENDER", "RENDER_SERVICE_ID", "VERCEL", "VERCEL_ENV")
+    )
+
+
 def get_database_path():
     """Return a writable database path for the current environment."""
     override_path = os.environ.get("DATABASE_PATH")
     if override_path:
         return override_path
-    if os.environ.get("VERCEL") == "1" or os.environ.get("VERCEL_ENV"):
+    if _is_hosted_runtime():
         return os.path.join(tempfile.gettempdir(), "ai_student_planner.db")
     return os.path.join(BASE_DIR, "database.db")
 
@@ -57,7 +65,7 @@ def get_upload_folder():
     override_path = os.environ.get("UPLOAD_FOLDER")
     if override_path:
         return override_path
-    if os.environ.get("VERCEL") == "1" or os.environ.get("VERCEL_ENV"):
+    if _is_hosted_runtime():
         return os.path.join(tempfile.gettempdir(), "uploads", "avatars")
     return os.path.join(BASE_DIR, "static", "uploads", "avatars")
 
@@ -2464,7 +2472,8 @@ def api_reminders():
 # ── Entry point ───────────────────────────────────────────────────────────────
 if __name__ == "__main__":
     host = "0.0.0.0"
-    port = 5000
+    port = int(os.environ.get("PORT", 5000))
+    debug_mode = not _is_hosted_runtime() and os.environ.get("FLASK_DEBUG", "1") != "0"
     local_url = f"http://127.0.0.1:{port}"
 
     # Attempt to determine a LAN-accessible IP address for network URL
@@ -2493,10 +2502,10 @@ if __name__ == "__main__":
     print("╚" + "═" * inner_width + "╝")
 
     # Open the browser once when the reloader child process runs (avoids double-open)
-    if os.environ.get("WERKZEUG_RUN_MAIN") == "true":
+    if not _is_hosted_runtime() and os.environ.get("WERKZEUG_RUN_MAIN") == "true":
         try:
             webbrowser.open_new_tab(local_url)
         except Exception:
             pass
 
-    app.run(debug=True, host=host, port=port)
+    app.run(debug=debug_mode, host=host, port=port)

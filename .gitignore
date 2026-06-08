@@ -19,8 +19,13 @@ ENV/
 
 # Flask / app runtime files
 database.db
+*.db
+*.sqlite3
 backups/*.bak
 instance/
+.env
+.env.*
+.render/
 
 # Uploaded/generated files
 static/uploads/*
