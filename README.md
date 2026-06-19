@@ -14,7 +14,6 @@ An intelligent study planner designed to help students organize their learning s
 - **Backend**: Node.js 
 - **Database**: My SQL / sqllite
 - **AI Integration**: Python (ML models, NLP libraries)
-- **Version Control**: Git & GitHub
 ---
 ## 📦 Installation
 1. Clone the repository:
