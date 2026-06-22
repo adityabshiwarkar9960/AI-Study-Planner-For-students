@@ -16,5 +16,5 @@ An intelligent study planner designed to help students organize their learning s
 - **AI Integration**: Python (ML models, NLP libraries)
 ---
 ## 📦 Installation
-1. Clone the repository:
+
 (https://github.com/adityabshiwarkar9960/AI-Study-Planner-for-students.git)
